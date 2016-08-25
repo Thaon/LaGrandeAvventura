@@ -11,20 +11,31 @@ public static class RendererExtensions
     }
 }
 
-public class POVSwapper : MonoBehaviour {
+public enum ActivationMode { external, turnBased, timeBased };
+public enum ExpireOptions { Loop, Destroy };
+
+public class Trickster : MonoBehaviour {
 
     #region member variables
 
     public int m_roundsToActivate = 0; //times you have to look at an object before it activates
     public bool m_includeSelf = false;
-    public enum ExpireOptions { Loop, Destroy };
+
+    public float m_secondsToActivate = 1;
+    
+    public ActivationMode m_activationMode = ActivationMode.external;
+    
     public ExpireOptions m_expiringOption = ExpireOptions.Loop;
+    [Tooltip("The message will be sent to the objects only if the 'Destroy' option is selected")]
+    public string m_messageToSend;
+    [SerializeField]
+    public GameObject[] m_ObjectsToNotifyOnExpire;
+    public Transform[] m_objects;
 
     private bool m_hasBeenLooked = false;
     private enum States { inactive, active, changed };
     private States m_state = States.inactive;
     private int m_index = 0; //starting object
-    private Transform[] m_objects;
 
     #endregion
 
@@ -59,15 +70,18 @@ public class POVSwapper : MonoBehaviour {
         else
         {
             //activate object the first time
-            if (m_state == States.inactive && m_hasBeenLooked)
+            if (m_activationMode == ActivationMode.turnBased)
             {
-                if (m_roundsToActivate > 0)
+                if (m_state == States.inactive && m_hasBeenLooked)
                 {
-                    m_roundsToActivate--;
-                }
-                else
-                {
-                    m_state = States.active;
+                    if (m_roundsToActivate > 0)
+                    {
+                        m_roundsToActivate--;
+                    }
+                    else
+                    {
+                        m_state = States.active;
+                    }
                 }
             }
 
@@ -94,11 +108,23 @@ public class POVSwapper : MonoBehaviour {
                     }
                     else if (m_expiringOption == ExpireOptions.Destroy)
                     {
+                        //notify the objects in the array when expiring
+                        foreach (GameObject obj in m_ObjectsToNotifyOnExpire)
+                        {
+                            gameObject.SendMessage(m_messageToSend);
+                        }
+
                         this.gameObject.SetActive(false);
                     }
                 }
                 m_state = States.changed;
             }
         }
+    }
+
+    public void ActivateExternally()
+    {
+        m_roundsToActivate = 0;
+        m_state = States.active;
     }
 }
